@@ -1,0 +1,7 @@
+[theme]
+primaryColor="#FF69B4"
+backgroundColor="#FFFFFF"
+secondaryBackgroundColor="#FFF0F5"
+textColor="#2F4F4F"
+font="sans serif"
+baseFontSize=16 # Ini akan mengatur ukuran font dasar untuk sebagian besar UI.
