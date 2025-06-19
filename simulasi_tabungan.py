@@ -10,13 +10,22 @@ import dateutil.relativedelta # Diperlukan untuk penambahan bulan yang akurat
 # --- Fungsi Bantuan untuk Format Rupiah ---
 def format_rupiah(value):
     """
-    Memformat angka float menjadi string mata uang Rupiah (contoh: Rp 1.000.000,50).
+    Memformat angka float menjadi string mata uang Rupiah.
+    Jika nilai adalah bilangan bulat, tidak akan ada desimal (contoh: Rp 1.000.000).
+    Jika ada bagian desimal, akan ditampilkan dua angka di belakang koma (contoh: Rp 1.000.000,50).
     """
     value = float(value)
-    s = "{:,.2f}".format(value) # Hasilnya seperti "1,234,567.89"
+    # Tentukan format berdasarkan apakah nilai memiliki bagian desimal
+    if value == int(value): # Jika nilai adalah bilangan bulat (misal 1000.0 menjadi 1000)
+        s = "{:,.0f}".format(value) # Format tanpa desimal
+    else:
+        s = "{:,.2f}".format(value) # Format dengan dua desimal
+
+    # Lakukan penggantian koma/titik untuk format Rupiah Indonesia
     s = s.replace('.', '#')      # Ganti titik desimal sementara dengan '#'
     s = s.replace(',', '.')      # Ganti koma ribuan dengan '.'
     s = s.replace('#', ',')      # Ganti '#' dengan koma desimal
+
     return "Rp " + s
 
 
@@ -133,7 +142,7 @@ st.markdown(
         padding-bottom: 0.5em;
         margin-bottom: 1.5em; /* Jarak bawah */
     }
-     
+      
     /* Styling Radio Button di Sidebar (navigasi utama dan sub-mode) */
     div[data-testid="stRadio"] label {
         background-color: #F8F0F5; /* Background untuk setiap opsi */
@@ -145,10 +154,6 @@ st.markdown(
         box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
         color: #2F4F4F; /* Warna teks default */
         font-weight: normal;
-    }
-    div[data-testid="stRadio"] label:hover {
-        background-color: #FFE5EE; /* Lighter pink on hover */
-        border-color: #FF69B4; /* Border pink saat hover */
     }
     div[data-testid="stRadio"] input[type="radio"]:checked + div {
         background-color: transparent !important; /* FIXED: Hapus background highlight */
@@ -217,7 +222,7 @@ st.markdown(
 # is_bunga_tahunan: True jika bunga_konstan_persen adalah bunga tahunan, False jika bunga bulanan
 def hitung_pertumbuhan_bulanan(jumlah_awal, jadwal_bunga_persen, durasi_bulan_total, bunga_konstan_persen, is_bunga_konstan_tahunan, start_date):
     hasil_per_bulan = []
-     
+      
     # rates_by_start_month akan menyimpan rate desimal yang akan langsung digunakan dalam math.exp()
     # Jadi, jika input adalah tahunan, kita bagi 12 di sini. Jika bulanan, langsung pakai.
     rates_by_start_month = {}
@@ -238,14 +243,14 @@ def hitung_pertumbuhan_bulanan(jumlah_awal, jadwal_bunga_persen, durasi_bulan_to
             rates_by_start_month[1] = rate_desimal_konstan
 
     current_saldo = jumlah_awal
-     
+      
     # Ambil bunga bulanan awal yang berlaku untuk Bulan 1.
     # Jika rates_by_start_month kosong (misal data_editor kosong), set ke 0.0
     current_effective_monthly_rate = rates_by_start_month.get(1, 0.0)
 
     # Inisialisasi tanggal perhitungan
     current_calculated_date = start_date
-     
+      
     # Tambahkan saldo awal di tanggal awal simulasi (Ini adalah entri untuk Bulan 0)
     hasil_per_bulan.append({
         'Tanggal': current_calculated_date.strftime("%d %B %Y"),
@@ -255,7 +260,7 @@ def hitung_pertumbuhan_bulanan(jumlah_awal, jadwal_bunga_persen, durasi_bulan_to
     # Loop untuk setiap bulan simulasi, dari Bulan 1 hingga durasi_bulan_total
     for total_month_num in range(1, durasi_bulan_total + 1):
         date_for_this_entry = start_date + dateutil.relativedelta.relativedelta(months=total_month_num)
-         
+          
         # Perbarui bunga jika ada perubahan di awal bulan ini (sesuai total_month_num)
         if total_month_num in rates_by_start_month:
             current_effective_monthly_rate = rates_by_start_month[total_month_num]
@@ -263,16 +268,16 @@ def hitung_pertumbuhan_bulanan(jumlah_awal, jadwal_bunga_persen, durasi_bulan_to
         # Hitung faktor pertumbuhan bulanan untuk bunga majemuk kontinu
         # current_effective_monthly_rate sudah dalam format yang benar untuk math.exp()
         growth_factor_monthly = math.exp(current_effective_monthly_rate) if current_effective_monthly_rate != 0 else 1.0
-         
+          
         # Terapkan pertumbuhan untuk bulan ini
         current_saldo = current_saldo * growth_factor_monthly
-         
+          
         # Tambahkan hasil untuk bulan ini ke daftar
         hasil_per_bulan.append({
             'Tanggal': date_for_this_entry.strftime("%d %B %Y"),
             'Jumlah Uang (Rp)': current_saldo
         })
-     
+      
     return hasil_per_bulan
 
 # Fungsi untuk menghitung durasi target
@@ -281,7 +286,7 @@ def hitung_pertumbuhan_bulanan(jumlah_awal, jadwal_bunga_persen, durasi_bulan_to
 def hitung_durasi_target(jumlah_awal, target_jumlah, bunga_estimasi_persen, is_bunga_target_tahunan, start_date):
     if bunga_estimasi_persen <= 0:
         return "Bunga harus lebih besar dari 0% untuk mencapai target (tanpa dana tambahan)."
-     
+      
     if jumlah_awal >= target_jumlah:
         return "Target sudah tercapai atau saldo awal sudah lebih besar!"
 
@@ -295,9 +300,9 @@ def hitung_durasi_target(jumlah_awal, target_jumlah, bunga_estimasi_persen, is_b
         else:
             # Jika bunga bulanan, gunakan langsung rate bulanan untuk formula durasi bulanan
             durasi_bulan_float = math.log(target_jumlah / jumlah_awal) / rate_desimal
-         
+          
         durasi_bulan_int = math.ceil(durasi_bulan_float)
-         
+          
         # Hitung tanggal target
         target_date = start_date + dateutil.relativedelta.relativedelta(months=durasi_bulan_int)
 
@@ -384,14 +389,14 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
         ("Simulasi Pertumbuhan", "Cari Durasi Target"),
         key="mode_simulasi_sub_radio"
     )
-     
+      
     # --- Input untuk kedua Sub-Mode Simulasi ---
     jumlah_awal = st.sidebar.number_input(
         "Jumlah Uang Awal (Rp)",
-        min_value=0.0,
-        value=1_000_000.0,
-        step=100_000.0,
-        format="%.2f"
+        min_value=0, # Diubah dari 0.0 menjadi 0 (integer)
+        value=1_000_000, 
+        step=100_000,   
+        # Format dihilangkan agar Streamlit menangani tampilan desimal secara fleksibel
     )
 
     # Input Tanggal Mulai Simulasi
@@ -435,7 +440,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
             key="jadwal_bunga_editor"
         )
         # Untuk tampilan ringkasan: ambil bunga bulanan pertama dari jadwal
-        bunga_untuk_display_metric = jadwal_bunga_persen['Bunga Bulanan (%)'].iloc[0] if not jadwal_bunga_persen.empty else 0.0
+        bunga_untuk_display_metric = jadwal_bunga_persen['Bulan Mulai'].iloc[0] if not jadwal_bunga_persen.empty else 0.0
 
     else: # Jika tidak diaktifkan, tampilkan input angka bunga tunggal (TAHUNAN)
         bunga_konstan_persen_for_calc = st.sidebar.number_input( # Variabel langsung dipakai untuk kalkulasi
@@ -463,7 +468,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
             step=1,
             format="%d"
         )
-         
+          
         st.write(f"---")
 
         st.subheader("Ringkasan Input Anda:")
@@ -498,7 +503,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
                 jadwal_bunga_for_calc = None # Tidak ada jadwal
                 bunga_konstan_arg = bunga_konstan_persen_for_calc # Bunga tahunan konstan
                 is_bunga_tahunan_arg = True # Bunga konstan adalah tahunan
-             
+              
             data_pertumbuhan_bulanan = hitung_pertumbuhan_bulanan(
                 jumlah_awal,
                 jadwal_bunga_for_calc,
@@ -507,14 +512,14 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
                 is_bunga_tahunan_arg,
                 start_date
             )
-             
+              
             if jumlah_awal == 0:
                 is_all_bunga_zero = False
                 if ubah_bunga and jadwal_bunga_persen is not None:
                     is_all_bunga_zero = all(float(item['Bunga Bulanan (%)']) == 0 for item in jadwal_bunga_persen.to_dict(orient='records'))
                 elif not ubah_bunga and bunga_konstan_persen_for_calc == 0: 
                     is_all_bunga_zero = True
-                 
+                  
                 if is_all_bunga_zero:
                     for item in data_pertumbuhan_bulanan:
                         item['Jumlah Uang (Rp)'] = 0.0
@@ -527,7 +532,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
 
             line_color = "#FF69B4"
             fill_color = "#FFC0CB"
-             
+              
             jumlah_uang_plot = [entry['Jumlah Uang (Rp)'] for entry in data_pertumbuhan_bulanan]
             tanggal_label_plot = [entry['Tanggal'] for entry in data_pertumbuhan_bulanan]
             x_ticks_positions = np.arange(len(data_pertumbuhan_bulanan))
@@ -539,7 +544,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
             ax.set_xlabel("Tanggal", fontsize=16, color="#2F4F4F")
             ax.set_ylabel("Jumlah Uang (Rp)", fontsize=16, color="#2F4F4F")
             ax.grid(True, linestyle='--', alpha=0.7, color="#D3D3D3")
-             
+              
             step_for_ticks = 1
             if durasi_bulan_simulasi > 12:
                 step_for_ticks = 6
@@ -556,17 +561,20 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
             ax.tick_params(axis='x', colors="#2F4F4F", labelsize=12)
             ax.tick_params(axis='y', colors="#2F4F4F", labelsize=12)
 
-            def rupiah_formatter(x, p):
-                return format_rupiah(x).replace("Rp ", "")
+            # Menggunakan format_rupiah langsung untuk formatter y-axis
+            # Perhatikan bahwa formatter ini hanya perlu mengembalikan string tanpa "Rp "
+            def rupiah_formatter_for_plot(x, p):
+                val_str = format_rupiah(x)
+                return val_str.replace("Rp ", "")
 
-            formatter = plt.FuncFormatter(rupiah_formatter)
+            formatter = plt.FuncFormatter(rupiah_formatter_for_plot)
             ax.yaxis.set_major_formatter(formatter)
 
             jumlah_akhir = jumlah_uang_plot[-1]
-             
+              
             x_annotate_pos = x_ticks_positions[-1]
             y_annotate_pos = jumlah_uang_plot[-1]
-             
+              
             ax.annotate(f'Nilai Akhir: {format_rupiah(jumlah_akhir)}',
                         xy=(x_annotate_pos, y_annotate_pos),
                         xytext=(30, 30), # Offset 30 points ke kanan dan 30 points ke atas
@@ -588,6 +596,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
 
             st.subheader("Detail Pertumbuhan Uang per Bulan")
             df_results = pd.DataFrame(data_pertumbuhan_bulanan)
+            # Kolom 'Jumlah Uang (Rp)' diaplikasikan fungsi format_rupiah
             df_results['Jumlah Uang (Rp)'] = df_results['Jumlah Uang (Rp)'].apply(format_rupiah)
             st.dataframe(df_results, use_container_width=True)
 
@@ -602,9 +611,9 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
         target_jumlah = st.sidebar.number_input(
             "Target Jumlah Uang (Rp)",
             min_value=jumlah_awal,
-            value=jumlah_awal * 1.5,
-            step=100_000.0,
-            format="%.2f",
+            value=int(jumlah_awal * 1.5), # Diubah menjadi integer
+            step=100_000, # Diubah menjadi integer
+            # Format dihilangkan agar Streamlit menangani tampilan desimal secara fleksibel
             key="target_jumlah_input"
         )
 
@@ -615,7 +624,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
         if ubah_bunga:
             st.sidebar.warning("Mode 'Cari Durasi Target' saat ini paling akurat untuk Bunga Konstan.")
             st.sidebar.info("Jika Bunga Berubah-ubah diaktifkan, perhitungan ini akan menggunakan bunga **bulanan** yang berlaku di Bulan 1 sebagai perkiraan rata-rata.") 
-             
+              
             if jadwal_bunga_persen is not None and not jadwal_bunga_persen.empty:
                 # Ambil bunga bulanan dari jadwal, prioritaskan Bulan 1
                 if 1 in jadwal_bunga_persen['Bulan Mulai'].values:
@@ -642,7 +651,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
                     is_bunga_target_tahunan,
                     start_date
                 )
-                 
+                  
                 if isinstance(hasil_durasi, tuple):
                     durasi_bulan_int, target_date = hasil_durasi
                     bunga_satuan_teks = "tahunan" if is_bunga_target_tahunan else "bulanan"
@@ -656,7 +665,7 @@ elif mode_aplikasi_utama == "Mulai Simulasi":
 elif mode_aplikasi_utama == "Panduan Penggunaan":
     st.header("📚 Panduan Penggunaan Sistem")
     st.markdown("""
-   
+    
     ### 1. Mode Sistem
 
     Di sidebar (sisi kiri), Anda akan menemukan 2 pilihan mode utama:
